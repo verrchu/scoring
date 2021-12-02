@@ -1,0 +1,7 @@
+[package]
+name = "scoring"
+authors = ["Evgeniy Terekhin <e_terekhin@pm.me>"]
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
