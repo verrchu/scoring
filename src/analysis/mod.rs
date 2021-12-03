@@ -31,6 +31,7 @@ impl Analysis {
                 self.process_withdrawal(*client, *tx, *amount)
             }
             Event::Dispute { client, tx } => self.process_dispute_init(*client, *tx),
+            Event::Resolve { client, tx } => self.process_dispute_resolve(*client, *tx),
             _ => todo!(),
         }
     }
@@ -71,7 +72,7 @@ impl Analysis {
         account.available_amount += amount;
 
         tracing::trace!(
-            "available amount changed: (client: {}, balance: {}, delta: {})",
+            "available amount changed: (client: {}, amount: {}, delta: {})",
             client,
             account.available_amount,
             amount
@@ -123,7 +124,7 @@ impl Analysis {
         account.get_mut().available_amount -= amount;
 
         tracing::trace!(
-            "available amount changed: (client: {}, balance: {}, delta: {})",
+            "available amount changed: (client: {}, amount: {}, delta: {})",
             client,
             account.get().available_amount,
             -amount
@@ -161,7 +162,7 @@ impl Analysis {
         account.get_mut().available_amount -= amount;
 
         tracing::trace!(
-            "available amount changed: (client: {}, balance: {}, delta: {})",
+            "available amount changed: (client: {}, amount: {}, delta: {})",
             client,
             account.get().available_amount,
             -amount
@@ -170,10 +171,61 @@ impl Analysis {
         account.get_mut().held_amount += amount;
 
         tracing::trace!(
-            "held amount changed: (client: {}, balance: {}, delta: {})",
+            "held amount changed: (client: {}, amount: {}, delta: {})",
             client,
             account.get().held_amount,
             amount
+        );
+
+        Ok(())
+    }
+
+    fn process_dispute_resolve(&mut self, client: Client, tx: Tx) -> AnalysisResult<()> {
+        tracing::trace!(
+            "attempting dispute resolve: (client: {}, tx: {})",
+            client,
+            tx
+        );
+
+        match self.disputes.get(&tx) {
+            Some(dispute_client) => {
+                if *dispute_client != client {
+                    return Err(AnalysisError::DisputeNotFound(client, tx));
+                }
+            }
+            None => return Err(AnalysisError::DisputeNotFound(client, tx)),
+        }
+
+        let mut account = match self.accounts.entry(client) {
+            Entry::Occupied(entry) => entry,
+            Entry::Vacant(_) => return Err(AnalysisError::AccountNotFound(client)),
+        };
+
+        let amount = match account.get().operations.get(&tx) {
+            Some(operation) => operation.amount,
+            None => return Err(AnalysisError::OperationNotFound(client, tx)),
+        };
+
+        self.disputes.remove(&tx);
+
+        tracing::trace!("dispute resolved: (client: {}, tx: {})", client, tx);
+
+        account.get_mut().available_amount += amount;
+
+        tracing::trace!(
+            "available amount changed: (client: {}, amount: {}, delta: {})",
+            client,
+            account.get().available_amount,
+            amount
+        );
+
+        account.get_mut().held_amount -= amount;
+
+        tracing::trace!(
+            "held amount changed: (client: {}, amount: {}, delta: {})",
+            client,
+            account.get().held_amount,
+            -amount
         );
 
         Ok(())

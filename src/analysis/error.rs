@@ -16,4 +16,6 @@ pub enum Error {
     OperationNotFound(Client, Tx),
     #[error("withdrawal dispute attempt (client: {0}, tx: {1})")]
     WithdrawalDisputeAttempt(Client, Tx),
+    #[error("dispute not found (client: {0}, tx: {1})")]
+    DisputeNotFound(Client, Tx),
 }
