@@ -13,7 +13,7 @@ use std::collections::{hash_map::Entry, HashMap, HashSet};
 use crate::event::wrappers::{Amount, Client, Tx};
 use crate::event::Event;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct Analysis {
     accounts: HashMap<Client, Account>,
     disputes: HashMap<Tx, Client>,
@@ -50,7 +50,7 @@ impl Analysis {
         }
 
         if amount.is_negative() {
-            return Err(AnalysisError::NegativeAmountOperation(tx, amount));
+            return Err(AnalysisError::NegativeAmountOperation(client, tx, amount));
         }
 
         let account = self.accounts.entry(client).or_default();
@@ -99,7 +99,7 @@ impl Analysis {
         }
 
         if amount.is_negative() {
-            return Err(AnalysisError::NegativeAmountOperation(tx, amount));
+            return Err(AnalysisError::NegativeAmountOperation(client, tx, amount));
         }
 
         let mut account = match self.accounts.entry(client) {
@@ -296,5 +296,120 @@ impl Analysis {
         tracing::trace!("account locked: (client: {})", client,);
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_deposit_success() {
+        let mut analysis = Analysis::begin();
+
+        let client = Client(1);
+        let tx = Tx(1);
+        let amount = Amount(1.0);
+
+        let event = Event::Deposit { client, tx, amount };
+
+        let result = analysis.process_event(&event);
+        assert_eq!(result, Ok(()));
+
+        assert_eq!(analysis.accounts.len(), 1);
+        assert!(analysis.locked_accounts.is_empty());
+        assert!(analysis.disputes.is_empty());
+
+        let account = analysis.accounts.get(&client);
+        assert!(account.is_some());
+        let account = account.unwrap();
+
+        assert_eq!(account.available_amount, amount);
+        assert_eq!(account.held_amount, Amount(0.0));
+        assert_eq!(account.operations.len(), 1);
+
+        let operation = account.operations.get(&tx);
+        assert!(operation.is_some());
+        let operation = operation.unwrap();
+
+        assert_eq!(operation.amount, amount);
+        assert_eq!(operation.kind, super::operation::Kind::Deposit);
+    }
+
+    #[test]
+    fn test_deposit_failure_negative_amount() {
+        let mut analysis = Analysis::begin();
+
+        let client = Client(1);
+        let tx = Tx(1);
+        let amount = Amount(-1.0);
+
+        let event = Event::Deposit { client, tx, amount };
+
+        let result = analysis.process_event(&event);
+        assert_eq!(
+            result,
+            Err(AnalysisError::NegativeAmountOperation(client, tx, amount))
+        );
+
+        assert!(analysis.accounts.is_empty());
+        assert!(analysis.locked_accounts.is_empty());
+        assert!(analysis.disputes.is_empty());
+    }
+
+    #[test]
+    fn test_deposit_synthetic_failure_account_locked() {
+        let mut analysis = Analysis::begin();
+
+        let client = Client(1);
+        let tx = Tx(1);
+        let amount = Amount(-1.0);
+
+        analysis.locked_accounts.insert(client);
+
+        let event = Event::Deposit { client, tx, amount };
+
+        let result = analysis.process_event(&event);
+        assert_eq!(result, Err(AnalysisError::AccountLocked(client)));
+
+        assert!(analysis.accounts.is_empty());
+        assert!(analysis.disputes.is_empty());
+        assert_eq!(
+            analysis.locked_accounts,
+            [client].into_iter().collect::<HashSet<_>>()
+        );
+    }
+
+    #[test]
+    fn test_deposit_failure_duplicate_operation() {
+        let mut analysis = Analysis::begin();
+
+        let client = Client(1);
+        let tx = Tx(1);
+        let amount = Amount(1.0);
+
+        let event = Event::Deposit { client, tx, amount };
+
+        let result = analysis.process_event(&event);
+        assert_eq!(result, Ok(()));
+
+        assert_eq!(
+            analysis
+                .accounts
+                .keys()
+                .map(ToOwned::to_owned)
+                .collect::<Vec<_>>(),
+            vec![client]
+        );
+
+        let tmp_analysis = analysis.clone();
+
+        let result = analysis.process_event(&event);
+        assert_eq!(result, Err(AnalysisError::DuplicateOperation(tx)));
+
+        // duplicate operation had no effect on analysis state
+        assert_eq!(tmp_analysis, analysis);
     }
 }

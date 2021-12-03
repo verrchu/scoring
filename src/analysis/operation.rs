@@ -6,7 +6,7 @@ pub(super) enum Kind {
     Withdrawal,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub(super) struct Operation {
     pub kind: Kind,
     pub amount: Amount,
