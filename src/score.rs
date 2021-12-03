@@ -17,7 +17,7 @@ struct Account {
 
 impl Score {
     pub fn new() -> Self {
-        Default::default()
+        Score::default()
     }
 
     pub fn process_event(&mut self, event: &Event) -> eyre::Result<()> {

@@ -7,13 +7,13 @@ pub struct Amount(pub f64);
 
 impl AddAssign for Amount {
     fn add_assign(&mut self, other: Self) {
-        *self = Self(self.0 + other.0)
+        *self = Self(self.0 + other.0);
     }
 }
 
 impl SubAssign for Amount {
     fn sub_assign(&mut self, other: Self) {
-        *self = Self(self.0 - other.0)
+        *self = Self(self.0 - other.0);
     }
 }
 
@@ -21,7 +21,7 @@ impl Amount {
     const PRECISION: i32 = 4;
 
     pub fn round(self) -> Self {
-        let base = 10.0f64.powi(Self::PRECISION);
+        let base = 10.0_f64.powi(Self::PRECISION);
 
         Self((self.0 * base).floor() / base)
     }

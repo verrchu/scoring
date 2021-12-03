@@ -1,3 +1,5 @@
+#![warn(clippy::pedantic)]
+
 mod event;
 use event::{Event, RawEvent};
 mod score;
