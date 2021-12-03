@@ -18,7 +18,7 @@ fn main() -> eyre::Result<()> {
     let mut score = Score::new();
     while let Some(raw_event) = reader.deserialize::<RawEvent>().next() {
         let raw_event = raw_event.map_err(eyre::Report::from)?;
-        let event = Event::from_raw(raw_event)?;
+        let event = Event::try_from(raw_event)?;
 
         score.process_event(&event)?;
     }
