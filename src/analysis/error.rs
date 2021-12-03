@@ -18,4 +18,6 @@ pub enum Error {
     WithdrawalDisputeAttempt(Client, Tx),
     #[error("dispute not found (client: {0}, tx: {1})")]
     DisputeNotFound(Client, Tx),
+    #[error("account locked (client: {0})")]
+    AccountLocked(Client),
 }
