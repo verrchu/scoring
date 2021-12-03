@@ -3,8 +3,6 @@ use event::{Event, RawEvent};
 mod score;
 use score::Score;
 
-mod types;
-
 use std::{
     env,
     fs::File,
@@ -22,7 +20,7 @@ fn main() -> eyre::Result<()> {
         let raw_event = raw_event.map_err(eyre::Report::from)?;
         let event = Event::from_raw(raw_event)?;
 
-        score.process_event(&event);
+        score.process_event(&event)?;
     }
 
     Ok(())
@@ -30,9 +28,8 @@ fn main() -> eyre::Result<()> {
 
 fn open_file() -> eyre::Result<impl Read> {
     let file_name = env::args()
-        .skip(1) // skip executable name
-        .next() // take first argument
-        .ok_or(eyre::eyre!("Input file name expected"))?;
+        .nth(1) // skip executable name and take first effective argument
+        .ok_or_else(|| eyre::eyre!("Input file name expected"))?;
 
     let file = File::open(file_name).map_err(eyre::Report::from)?;
 

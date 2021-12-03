@@ -1,4 +1,6 @@
-use crate::types::{Amount, Client, Tx};
+pub mod wrappers;
+
+use wrappers::{Amount, Client, Tx};
 
 use serde::{Deserialize, Serialize};
 
@@ -68,10 +70,9 @@ impl Event {
                 tx: raw.tx,
             }),
             EventType::Deposit => {
-                let amount = raw.amount.ok_or(eyre::eyre!(
-                    "Deposit has no 'amount' specified: (tx: {})",
-                    raw.tx.0
-                ))?;
+                let amount = raw.amount.ok_or_else(|| {
+                    eyre::eyre!("Deposit has no 'amount' specified: (tx: {})", raw.tx.0)
+                })?;
 
                 Ok(Self::Deposit {
                     client: raw.client,
@@ -80,10 +81,9 @@ impl Event {
                 })
             }
             EventType::Withdrawal => {
-                let amount = raw.amount.ok_or(eyre::eyre!(
-                    "Withdrawal has no 'amount' specified: (tx: {})",
-                    raw.tx.0
-                ))?;
+                let amount = raw.amount.ok_or_else(|| {
+                    eyre::eyre!("Withdrawal has no 'amount' specified: (tx: {})", raw.tx.0)
+                })?;
 
                 Ok(Self::Withdrawal {
                     client: raw.client,

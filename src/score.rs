@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
+use crate::event::wrappers::{Amount, Client, Tx};
 use crate::event::Event;
-use crate::types::{Amount, Client, Tx};
 
 #[derive(Debug, Default)]
 pub struct Score {
@@ -37,7 +37,7 @@ impl Score {
         account
             .txs
             .insert(tx, amount)
-            .ok_or(eyre::eyre!("Tx {} already encountered", tx.0))
+            .ok_or_else(|| eyre::eyre!("Tx {} already encountered", tx.0))
             .map(|_| ())
     }
 
@@ -48,7 +48,7 @@ impl Score {
         account
             .txs
             .insert(tx, amount)
-            .ok_or(eyre::eyre!("Tx {} already encountered", tx.0))
+            .ok_or_else(|| eyre::eyre!("Tx {} already encountered", tx.0))
             .map(|_| ())
     }
 }
