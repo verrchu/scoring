@@ -1,17 +1,32 @@
-use crate::util;
+use crate::types::{Amount, Client, Tx};
 
 use serde::{Deserialize, Serialize};
-
-pub const AMOUNT_PRECISION: u8 = 4;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum Event {
-    Chargeback { client: u16, tx: u32 },
-    Deposit { client: u16, tx: u32, amount: f64 },
-    Dispute { client: u16, tx: u32 },
-    Resolve { client: u16, tx: u32 },
-    Withdrawal { client: u16, tx: u32, amount: f64 },
+    Chargeback {
+        client: Client,
+        tx: Tx,
+    },
+    Deposit {
+        client: Client,
+        tx: Tx,
+        amount: Amount,
+    },
+    Dispute {
+        client: Client,
+        tx: Tx,
+    },
+    Resolve {
+        client: Client,
+        tx: Tx,
+    },
+    Withdrawal {
+        client: Client,
+        tx: Tx,
+        amount: Amount,
+    },
 }
 
 // Unfortunately csv crate can not deserialize rows directly to internally
@@ -21,9 +36,9 @@ pub enum Event {
 pub struct RawEvent {
     #[serde(rename = "type")]
     ty: EventType,
-    client: u16,
-    tx: u32,
-    amount: Option<f64>,
+    client: Client,
+    tx: Tx,
+    amount: Option<Amount>,
 }
 
 // This enum is used only for transition from RawEvent to Event
@@ -55,29 +70,25 @@ impl Event {
             EventType::Deposit => {
                 let amount = raw.amount.ok_or(eyre::eyre!(
                     "Deposit has no 'amount' specified: (tx: {})",
-                    raw.tx
+                    raw.tx.0
                 ))?;
-
-                let amount = util::round_decimal(amount, AMOUNT_PRECISION);
 
                 Ok(Self::Deposit {
                     client: raw.client,
                     tx: raw.tx,
-                    amount,
+                    amount: amount.round(),
                 })
             }
             EventType::Withdrawal => {
                 let amount = raw.amount.ok_or(eyre::eyre!(
                     "Withdrawal has no 'amount' specified: (tx: {})",
-                    raw.tx
+                    raw.tx.0
                 ))?;
-
-                let amount = util::round_decimal(amount, AMOUNT_PRECISION);
 
                 Ok(Self::Withdrawal {
                     client: raw.client,
                     tx: raw.tx,
-                    amount,
+                    amount: amount.round(),
                 })
             }
         }
@@ -116,15 +127,15 @@ withdrawal,1,2,1.0
             vec![
                 RawEvent {
                     ty: EventType::Deposit,
-                    client: 1,
-                    tx: 1,
-                    amount: Some(2.0)
+                    client: Client(1),
+                    tx: Tx(1),
+                    amount: Some(Amount(2.0))
                 },
                 RawEvent {
                     ty: EventType::Withdrawal,
-                    client: 1,
-                    tx: 2,
-                    amount: Some(1.0)
+                    client: Client(1),
+                    tx: Tx(2),
+                    amount: Some(Amount(1.0))
                 }
             ]
         );

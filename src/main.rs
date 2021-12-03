@@ -2,7 +2,8 @@ mod event;
 use event::{Event, RawEvent};
 mod score;
 use score::Score;
-mod util;
+
+mod types;
 
 use std::{
     env,
