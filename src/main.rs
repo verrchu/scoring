@@ -1,5 +1,3 @@
-#![warn(clippy::pedantic)]
-
 mod event;
 use event::{Event, RawEvent};
 mod analysis;
@@ -12,9 +10,14 @@ use std::{
     io::{BufReader, Read},
 };
 
+use tracing_subscriber::EnvFilter;
+
 fn main() -> eyre::Result<()> {
     let (non_blocking, _guard) = tracing_appender::non_blocking(stderr());
-    tracing_subscriber::fmt().with_writer(non_blocking).init();
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env())
+        .with_writer(non_blocking)
+        .init();
 
     let mut reader = csv::ReaderBuilder::new()
         .trim(csv::Trim::All)

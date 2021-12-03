@@ -1,11 +1,11 @@
 use std::{
     fmt,
-    ops::{AddAssign, SubAssign},
+    ops::{AddAssign, Neg, SubAssign},
 };
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct Amount(pub f64);
 
 impl fmt::Display for Amount {
@@ -17,6 +17,14 @@ impl fmt::Display for Amount {
 impl AddAssign for Amount {
     fn add_assign(&mut self, other: Self) {
         *self = Self(self.0 + other.0);
+    }
+}
+
+impl Neg for Amount {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        Self(-self.0)
     }
 }
 

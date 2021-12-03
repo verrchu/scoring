@@ -2,6 +2,7 @@ mod account;
 use account::Account;
 mod operation;
 use operation::Operation;
+
 mod error;
 pub use error::Error as AnalysisError;
 
@@ -29,39 +30,152 @@ impl Analysis {
             Event::Withdrawal { client, tx, amount } => {
                 self.process_withdrawal(*client, *tx, *amount)
             }
+            Event::Dispute { client, tx } => self.process_dispute_init(*client, *tx),
             _ => todo!(),
         }
     }
 
     fn process_deposit(&mut self, client: Client, tx: Tx, amount: Amount) -> AnalysisResult<()> {
+        tracing::trace!(
+            "attempting deposit: (client: {}, tx: {}, amount: {})",
+            client,
+            tx,
+            amount
+        );
+
         if amount.is_negative() {
-            return Err(AnalysisError::NegativeAmountDeposit(client, tx, amount));
+            return Err(AnalysisError::NegativeAmountOperation(tx, amount));
         }
 
         let account = self.accounts.entry(client).or_default();
-        account.available_amount += amount;
 
         match account.operations.entry(tx) {
             Entry::Vacant(entry) => {
-                todo!();
-                // entry.insert(amount);
-                // Ok(())
+                let operation = Operation {
+                    kind: operation::Kind::Deposit,
+                    amount,
+                };
+
+                tracing::trace!(
+                    "deposit operation recorded: (client: {}, tx: {}, amount: {})",
+                    client,
+                    tx,
+                    amount
+                );
+
+                entry.insert(operation);
             }
-            Entry::Occupied(_) => todo!(),
+            Entry::Occupied(_) => return Err(AnalysisError::DuplicateOperation(tx)),
         }
+
+        account.available_amount += amount;
+
+        tracing::trace!(
+            "available amount changed: (client: {}, balance: {}, delta: {})",
+            client,
+            account.available_amount,
+            amount
+        );
+
+        Ok(())
     }
 
     fn process_withdrawal(&mut self, client: Client, tx: Tx, amount: Amount) -> AnalysisResult<()> {
-        let account = self.accounts.entry(client).or_default();
-        account.available_amount -= amount;
+        tracing::trace!(
+            "attempting withdrawal: (client: {}, tx: {}, amount: {})",
+            client,
+            tx,
+            amount
+        );
 
-        match account.operations.entry(tx) {
-            Entry::Vacant(entry) => {
-                todo!();
-                // entry.insert(amount);
-                // Ok(())
-            }
-            Entry::Occupied(_) => todo!(),
+        if amount.is_negative() {
+            return Err(AnalysisError::NegativeAmountOperation(tx, amount));
         }
+
+        let mut account = match self.accounts.entry(client) {
+            Entry::Occupied(entry) => entry,
+            Entry::Vacant(_) => return Err(AnalysisError::AccountNotFound(client)),
+        };
+
+        if amount > account.get().available_amount {
+            return Err(AnalysisError::InsufficientFunds(client, tx, amount));
+        }
+
+        match account.get_mut().operations.entry(tx) {
+            Entry::Vacant(entry) => {
+                let operation = Operation {
+                    kind: operation::Kind::Withdrawal,
+                    amount,
+                };
+
+                tracing::trace!(
+                    "withdrawal operation recorded: (client: {}, tx: {}, amount: {})",
+                    client,
+                    tx,
+                    amount
+                );
+
+                entry.insert(operation);
+            }
+            Entry::Occupied(_) => return Err(AnalysisError::DuplicateOperation(tx)),
+        }
+
+        account.get_mut().available_amount -= amount;
+
+        tracing::trace!(
+            "available amount changed: (client: {}, balance: {}, delta: {})",
+            client,
+            account.get().available_amount,
+            -amount
+        );
+
+        Ok(())
+    }
+
+    fn process_dispute_init(&mut self, client: Client, tx: Tx) -> AnalysisResult<()> {
+        tracing::trace!("attempting dispute init: (client: {}, tx: {})", client, tx);
+
+        if self.disputes.contains_key(&tx) {
+            return Err(AnalysisError::DisputeAlreadyInProgress(tx));
+        }
+
+        let mut account = match self.accounts.entry(client) {
+            Entry::Occupied(entry) => entry,
+            Entry::Vacant(_) => return Err(AnalysisError::AccountNotFound(client)),
+        };
+
+        let amount = match account.get().operations.get(&tx) {
+            Some(operation) => match operation.kind {
+                operation::Kind::Deposit => operation.amount,
+                operation::Kind::Withdrawal => {
+                    return Err(AnalysisError::WithdrawalDisputeAttempt(client, tx))
+                }
+            },
+            None => return Err(AnalysisError::OperationNotFound(client, tx)),
+        };
+
+        self.disputes.insert(tx, client);
+
+        tracing::trace!("dispute inited: (client: {}, tx: {})", client, tx);
+
+        account.get_mut().available_amount -= amount;
+
+        tracing::trace!(
+            "available amount changed: (client: {}, balance: {}, delta: {})",
+            client,
+            account.get().available_amount,
+            -amount
+        );
+
+        account.get_mut().held_amount += amount;
+
+        tracing::trace!(
+            "held amount changed: (client: {}, balance: {}, delta: {})",
+            client,
+            account.get().held_amount,
+            amount
+        );
+
+        Ok(())
     }
 }
