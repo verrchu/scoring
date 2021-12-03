@@ -1,9 +1,18 @@
-use std::ops::{AddAssign, SubAssign};
+use std::{
+    fmt,
+    ops::{AddAssign, SubAssign},
+};
 
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 pub struct Amount(pub f64);
+
+impl fmt::Display for Amount {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 impl AddAssign for Amount {
     fn add_assign(&mut self, other: Self) {
@@ -24,6 +33,10 @@ impl Amount {
         let base = 10.0_f64.powi(Self::PRECISION);
 
         Self((self.0 * base).floor() / base)
+    }
+
+    pub fn is_negative(&self) -> bool {
+        self.0 < 0.0
     }
 }
 
