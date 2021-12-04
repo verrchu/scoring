@@ -5,9 +5,7 @@ use analysis::Analysis;
 
 use std::{
     env,
-    fs::File,
     io::{stderr, stdout},
-    io::{BufReader, Read},
 };
 
 use tracing_subscriber::EnvFilter;
@@ -19,10 +17,14 @@ fn main() -> eyre::Result<()> {
         .with_writer(non_blocking)
         .init();
 
+    let file_path = env::args()
+        .nth(1) // skip executable name and take first effective argument
+        .ok_or_else(|| eyre::eyre!("Input file name expected"))?;
+
     let mut csv_reader = csv::ReaderBuilder::new()
         .trim(csv::Trim::All)
-        // TODO: consider replacing open_file call with Builder::path
-        .from_reader(open_file()?);
+        .from_path(file_path)
+        .map_err(|err| eyre::Report::from(err).wrap_err("failed to init csv reader"))?;
 
     let mut analysis = Analysis::begin();
 
@@ -40,20 +42,12 @@ fn main() -> eyre::Result<()> {
     for account_summary in analysis.summary() {
         csv_writer
             .serialize(account_summary)
-            .map_err(eyre::Report::from)?;
+            .map_err(|err| eyre::Report::from(err).wrap_err("failed to write csv record"))?;
     }
 
-    csv_writer.flush().map_err(eyre::Report::from)?;
+    csv_writer
+        .flush()
+        .map_err(|err| eyre::Report::from(err).wrap_err("failed to flush csv writer"))?;
 
     Ok(())
-}
-
-fn open_file() -> eyre::Result<impl Read> {
-    let file_name = env::args()
-        .nth(1) // skip executable name and take first effective argument
-        .ok_or_else(|| eyre::eyre!("Input file name expected"))?;
-
-    let file = File::open(file_name).map_err(eyre::Report::from)?;
-
-    Ok(BufReader::new(file))
 }
