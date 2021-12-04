@@ -356,12 +356,35 @@ mod tests {
             assert!(analysis.locked_accounts.contains(&client));
         }
 
-        pub(super) fn assert_operation_count(analysis: &Analysis, client: Client, count: usize) {
+        pub(super) fn assert_operations_count(analysis: &Analysis, client: Client, count: usize) {
             let account = analysis.accounts.get(&client);
             assert!(account.is_some());
             let account = account.unwrap();
 
             assert_eq!(account.operations.len(), count);
+        }
+
+        pub(super) fn assert_disputes_count(analysis: &Analysis, count: usize) {
+            assert_eq!(analysis.disputes.len(), count);
+        }
+
+        pub(super) fn assert_dispute_exists(analysis: &Analysis, expected_client: Client, tx: Tx) {
+            let client = analysis.disputes.get(&tx);
+            assert!(client.is_some());
+
+            assert_eq!(*client.unwrap(), expected_client);
+        }
+
+        pub(super) fn assert_dispute_not_exists(
+            analysis: &Analysis,
+            expected_client: Client,
+            tx: Tx,
+        ) {
+            let client = analysis.disputes.get(&tx);
+
+            if let Some(client) = client {
+                assert_ne!(*client, expected_client);
+            }
         }
     }
 
@@ -380,6 +403,7 @@ mod tests {
         let result = analysis.process_event(&event);
         assert_eq!(result, Ok(()));
 
+        // Account record should appear automatically on first deposit
         utils::assert_account_exists(&analysis, client);
 
         utils::assert_operation_exists(
@@ -423,6 +447,7 @@ mod tests {
         let tx = Tx(1);
         let amount = Amount(-1.0);
 
+        // Lock account
         analysis.locked_accounts.insert(client);
 
         let event = Event::Deposit { client, tx, amount };
@@ -458,13 +483,14 @@ mod tests {
                 amount,
             },
         );
-        utils::assert_operation_count(&analysis, client, 1);
+        utils::assert_operations_count(&analysis, client, 1);
         utils::assert_account_balance(&analysis, client, Amount(1.0), Amount(0.0));
 
+        // Repeat the same operation
         let result = analysis.process_event(&event);
         assert_eq!(result, Err(AnalysisError::DuplicateOperation(tx)));
 
-        utils::assert_operation_count(&analysis, client, 1);
+        utils::assert_operations_count(&analysis, client, 1);
         utils::assert_account_balance(&analysis, client, Amount(1.0), Amount(0.0));
     }
 
@@ -478,6 +504,7 @@ mod tests {
 
         utils::assert_account_not_exists(&analysis, client);
 
+        // A deposit with sufficient amount should occur before a withdrawal
         let event = Event::Deposit { client, tx, amount };
 
         let result = analysis.process_event(&event);
@@ -492,7 +519,7 @@ mod tests {
                 amount,
             },
         );
-        utils::assert_operation_count(&analysis, client, 1);
+        utils::assert_operations_count(&analysis, client, 1);
         utils::assert_account_balance(&analysis, client, Amount(1.0), Amount(0.0));
 
         let client = Client(1);
@@ -515,7 +542,7 @@ mod tests {
                 amount,
             },
         );
-        utils::assert_operation_count(&analysis, client, 2);
+        utils::assert_operations_count(&analysis, client, 2);
         utils::assert_account_balance(&analysis, client, Amount(0.0), Amount(0.0));
     }
 
@@ -529,6 +556,7 @@ mod tests {
 
         utils::assert_account_not_exists(&analysis, client);
 
+        // Withdrawal can happen only if account record has previously been created
         let event = Event::Withdrawal { client, tx, amount };
 
         let result = analysis.process_event(&event);
@@ -551,7 +579,7 @@ mod tests {
         let result = analysis.process_event(&event);
         assert_eq!(result, Ok(()));
 
-        utils::assert_operation_count(&analysis, client, 1);
+        utils::assert_operations_count(&analysis, client, 1);
         utils::assert_account_balance(&analysis, client, Amount(1.0), Amount(0.0));
 
         let tx = Tx(2);
@@ -565,7 +593,7 @@ mod tests {
             Err(AnalysisError::NegativeAmountOperation(client, tx, amount))
         );
 
-        utils::assert_operation_count(&analysis, client, 1);
+        utils::assert_operations_count(&analysis, client, 1);
         utils::assert_account_balance(&analysis, client, Amount(1.0), Amount(0.0));
     }
 
@@ -583,7 +611,7 @@ mod tests {
         let result = analysis.process_event(&event);
         assert_eq!(result, Ok(()));
 
-        utils::assert_operation_count(&analysis, client, 1);
+        utils::assert_operations_count(&analysis, client, 1);
         utils::assert_account_balance(&analysis, client, Amount(1.0), Amount(0.0));
 
         let tx = Tx(2);
@@ -597,7 +625,7 @@ mod tests {
             Err(AnalysisError::InsufficientFunds(client, tx, amount))
         );
 
-        utils::assert_operation_count(&analysis, client, 1);
+        utils::assert_operations_count(&analysis, client, 1);
         utils::assert_account_balance(&analysis, client, Amount(1.0), Amount(0.0));
     }
 
@@ -609,6 +637,7 @@ mod tests {
         let tx = Tx(1);
         let amount = Amount(-1.0);
 
+        // Lock account
         analysis.locked_accounts.insert(client);
 
         let event = Event::Withdrawal { client, tx, amount };
@@ -644,15 +673,222 @@ mod tests {
                 amount,
             },
         );
-        utils::assert_operation_count(&analysis, client, 1);
+        utils::assert_operations_count(&analysis, client, 1);
         utils::assert_account_balance(&analysis, client, Amount(1.0), Amount(0.0));
 
+        // Emit event with same tx
         let event = Event::Withdrawal { client, tx, amount };
 
         let result = analysis.process_event(&event);
         assert_eq!(result, Err(AnalysisError::DuplicateOperation(tx)));
 
-        utils::assert_operation_count(&analysis, client, 1);
+        utils::assert_operations_count(&analysis, client, 1);
         utils::assert_account_balance(&analysis, client, Amount(1.0), Amount(0.0));
+    }
+
+    #[test]
+    fn test_dispute_init_success() {
+        let mut analysis = Analysis::begin();
+
+        let client = Client(1);
+
+        let tx = Tx(1);
+        let amount = Amount(1.0);
+
+        let event = Event::Deposit { client, tx, amount };
+
+        let result = analysis.process_event(&event);
+        assert_eq!(result, Ok(()));
+
+        let tx = Tx(2);
+        let amount = Amount(2.0);
+
+        let event = Event::Deposit { client, tx, amount };
+
+        let result = analysis.process_event(&event);
+        assert_eq!(result, Ok(()));
+
+        utils::assert_account_balance(&analysis, client, Amount(3.0), Amount(0.0));
+        utils::assert_operations_count(&analysis, client, 2);
+
+        let event = Event::Dispute { client, tx: Tx(1) };
+
+        let result = analysis.process_event(&event);
+        assert_eq!(result, Ok(()));
+
+        utils::assert_account_balance(&analysis, client, Amount(2.0), Amount(1.0));
+        utils::assert_operations_count(&analysis, client, 2);
+
+        utils::assert_disputes_count(&analysis, 1);
+        utils::assert_dispute_exists(&analysis, client, Tx(1));
+        utils::assert_dispute_not_exists(&analysis, client, Tx(2));
+    }
+
+    #[test]
+    fn test_dispute_init_failure_dispute_already_in_progress() {
+        let mut analysis = Analysis::begin();
+
+        let client = Client(1);
+        let tx = Tx(1);
+        let amount = Amount(1.0);
+
+        let event = Event::Deposit { client, tx, amount };
+
+        let result = analysis.process_event(&event);
+        assert_eq!(result, Ok(()));
+
+        utils::assert_account_balance(&analysis, client, Amount(1.0), Amount(0.0));
+        utils::assert_operations_count(&analysis, client, 1);
+
+        let event = Event::Dispute { client, tx };
+
+        let result = analysis.process_event(&event);
+        assert_eq!(result, Ok(()));
+
+        utils::assert_account_balance(&analysis, client, Amount(0.0), Amount(1.0));
+        utils::assert_operations_count(&analysis, client, 1);
+
+        utils::assert_disputes_count(&analysis, 1);
+        utils::assert_dispute_exists(&analysis, client, Tx(1));
+
+        let result = analysis.process_event(&event);
+        assert_eq!(result, Err(AnalysisError::DisputeAlreadyInProgress(tx)));
+
+        utils::assert_account_balance(&analysis, client, Amount(0.0), Amount(1.0));
+        utils::assert_operations_count(&analysis, client, 1);
+
+        utils::assert_disputes_count(&analysis, 1);
+        utils::assert_dispute_exists(&analysis, client, Tx(1));
+    }
+
+    #[test]
+    fn test_dispute_init_failure_account_not_found() {
+        let mut analysis = Analysis::begin();
+
+        let client = Client(1);
+        let tx = Tx(1);
+        let amount = Amount(1.0);
+
+        let event = Event::Deposit { client, tx, amount };
+
+        let result = analysis.process_event(&event);
+        assert_eq!(result, Ok(()));
+
+        utils::assert_account_balance(&analysis, client, Amount(1.0), Amount(0.0));
+        utils::assert_operations_count(&analysis, client, 1);
+
+        let event = Event::Dispute {
+            client: Client(2),
+            tx,
+        };
+
+        let result = analysis.process_event(&event);
+        assert_eq!(result, Err(AnalysisError::AccountNotFound(Client(2))));
+
+        utils::assert_account_balance(&analysis, client, Amount(1.0), Amount(0.0));
+        utils::assert_operations_count(&analysis, client, 1);
+
+        utils::assert_disputes_count(&analysis, 0);
+    }
+
+    #[test]
+    fn test_dispute_init_failure_operation_not_found() {
+        let mut analysis = Analysis::begin();
+
+        let client = Client(1);
+        let tx = Tx(1);
+        let amount = Amount(1.0);
+
+        let event = Event::Deposit { client, tx, amount };
+
+        let result = analysis.process_event(&event);
+        assert_eq!(result, Ok(()));
+
+        utils::assert_account_balance(&analysis, client, Amount(1.0), Amount(0.0));
+        utils::assert_operations_count(&analysis, client, 1);
+
+        let event = Event::Dispute { client, tx: Tx(2) };
+
+        let result = analysis.process_event(&event);
+        assert_eq!(result, Err(AnalysisError::OperationNotFound(client, Tx(2))));
+
+        utils::assert_account_balance(&analysis, client, Amount(1.0), Amount(0.0));
+        utils::assert_operations_count(&analysis, client, 1);
+
+        utils::assert_disputes_count(&analysis, 0);
+    }
+
+    #[test]
+    fn test_dispute_init_failure_withdrawal_dispute_attempt() {
+        let mut analysis = Analysis::begin();
+
+        let client = Client(1);
+
+        let deposit_tx = Tx(1);
+        let amount = Amount(10.0);
+
+        let event = Event::Deposit {
+            client,
+            tx: deposit_tx,
+            amount,
+        };
+
+        let result = analysis.process_event(&event);
+        assert_eq!(result, Ok(()));
+
+        let withdrawal_tx = Tx(2);
+        let amount = Amount(8.0);
+
+        let event = Event::Withdrawal {
+            client,
+            tx: withdrawal_tx,
+            amount,
+        };
+
+        let result = analysis.process_event(&event);
+        assert_eq!(result, Ok(()));
+
+        utils::assert_account_balance(&analysis, client, Amount(2.0), Amount(0.0));
+        utils::assert_operations_count(&analysis, client, 2);
+
+        let event = Event::Dispute {
+            client,
+            tx: withdrawal_tx,
+        };
+
+        let result = analysis.process_event(&event);
+        assert_eq!(
+            result,
+            Err(AnalysisError::WithdrawalDisputeAttempt(
+                client,
+                withdrawal_tx
+            ))
+        );
+
+        utils::assert_account_balance(&analysis, client, Amount(2.0), Amount(0.0));
+        utils::assert_operations_count(&analysis, client, 2);
+
+        utils::assert_disputes_count(&analysis, 0);
+    }
+
+    #[test]
+    fn test_didsute_init_synthetic_failure_account_locked() {
+        let mut analysis = Analysis::begin();
+
+        let client = Client(1);
+        let tx = Tx(1);
+
+        // Lock account
+        analysis.locked_accounts.insert(client);
+
+        let event = Event::Dispute { client, tx };
+
+        let result = analysis.process_event(&event);
+        assert_eq!(result, Err(AnalysisError::AccountLocked(client)));
+
+        // This is a synthetic test. Therefore this counter-intuitive state
+        // where account is locked but does not exist is expected
+        utils::assert_account_not_exists(&analysis, client);
+        utils::assert_account_locked(&analysis, client);
     }
 }
