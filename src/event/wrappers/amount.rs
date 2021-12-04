@@ -1,6 +1,6 @@
 use std::{
     fmt,
-    ops::{AddAssign, Neg, SubAssign},
+    ops::{Add, AddAssign, Neg, SubAssign},
 };
 
 use serde::{Deserialize, Serialize};
@@ -25,6 +25,14 @@ impl Neg for Amount {
 
     fn neg(self) -> Self::Output {
         Self(-self.0)
+    }
+}
+
+impl Add for Amount {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self::Output {
+        Self(self.0 + other.0)
     }
 }
 

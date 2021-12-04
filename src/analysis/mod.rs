@@ -6,6 +6,9 @@ use account::Account;
 mod operation;
 use operation::Operation;
 
+mod summary;
+pub use summary::Summary;
+
 mod error;
 pub use error::Error as AnalysisError;
 
@@ -26,6 +29,10 @@ pub struct Analysis {
 impl Analysis {
     pub fn begin() -> Self {
         Analysis::default()
+    }
+
+    pub fn summary(self) -> Summary {
+        Summary::from(self)
     }
 
     pub fn process_event(&mut self, event: &Event) -> AnalysisResult<()> {

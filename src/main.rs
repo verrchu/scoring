@@ -6,7 +6,7 @@ use analysis::Analysis;
 use std::{
     env,
     fs::File,
-    io::stderr,
+    io::{stderr, stdout},
     io::{BufReader, Read},
 };
 
@@ -19,13 +19,14 @@ fn main() -> eyre::Result<()> {
         .with_writer(non_blocking)
         .init();
 
-    let mut reader = csv::ReaderBuilder::new()
+    let mut csv_reader = csv::ReaderBuilder::new()
         .trim(csv::Trim::All)
         // TODO: consider replacing open_file call with Builder::path
         .from_reader(open_file()?);
 
     let mut analysis = Analysis::begin();
-    while let Some(raw_event) = reader.deserialize::<RawEvent>().next() {
+
+    while let Some(raw_event) = csv_reader.deserialize::<RawEvent>().next() {
         let raw_event = raw_event.map_err(eyre::Report::from)?;
         let event = Event::try_from(raw_event)?;
 
@@ -33,6 +34,16 @@ fn main() -> eyre::Result<()> {
             .process_event(&event)
             .map_err(|err| tracing::error!("analysis error: {}", err));
     }
+
+    let mut csv_writer = csv::Writer::from_writer(stdout());
+
+    for account_summary in analysis.summary() {
+        csv_writer
+            .serialize(account_summary)
+            .map_err(eyre::Report::from)?;
+    }
+
+    csv_writer.flush().map_err(eyre::Report::from)?;
 
     Ok(())
 }
