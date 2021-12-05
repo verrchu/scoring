@@ -60,6 +60,43 @@ impl TryFrom<RawEvent> for Event {
     }
 }
 
+impl From<Event> for RawEvent {
+    fn from(event: Event) -> Self {
+        match event {
+            Event::Chargeback { client, tx } => Self {
+                ty: EventType::Chargeback,
+                client,
+                tx,
+                amount: None,
+            },
+            Event::Dispute { client, tx } => Self {
+                ty: EventType::Dispute,
+                client,
+                tx,
+                amount: None,
+            },
+            Event::Resolve { client, tx } => Self {
+                ty: EventType::Resolve,
+                client,
+                tx,
+                amount: None,
+            },
+            Event::Deposit { client, tx, amount } => Self {
+                ty: EventType::Deposit,
+                client,
+                tx,
+                amount: Some(amount),
+            },
+            Event::Withdrawal { client, tx, amount } => Self {
+                ty: EventType::Withdrawal,
+                client,
+                tx,
+                amount: Some(amount),
+            },
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
