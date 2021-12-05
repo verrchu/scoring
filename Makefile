@@ -13,7 +13,7 @@ bats: release submodules
 
 new_bats_case:
 ifndef NAME
-$(error NAME is not set)
+	$(error NAME is not set)
 endif
 	@ mkdir ${BATS_CASES}/${NAME}/
 	@ echo ${BATS_CASE_INPUT_HEADER} > ${BATS_CASES}/${NAME}/input.csv

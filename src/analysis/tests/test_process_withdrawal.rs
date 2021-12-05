@@ -78,7 +78,7 @@ fn test_failure_negative_amount_operations() {
 
     let client = Client(1);
 
-    let tx = Tx(2);
+    let tx = Tx(1);
     let amount = Amount(1.0);
 
     let event = Event::Deposit { client, tx, amount };
@@ -110,7 +110,7 @@ fn test_failure_insufficient_funds() {
 
     let client = Client(1);
 
-    let tx = Tx(2);
+    let tx = Tx(1);
     let amount = Amount(1.0);
 
     let event = Event::Deposit { client, tx, amount };
@@ -159,7 +159,7 @@ fn test_synthetic_failure_account_locked() {
 }
 
 #[test]
-fn test_failure_duplicate_operation() {
+fn test_failure_duplicate_operations_same_account() {
     let mut analysis = Analysis::begin();
 
     let client = Client(1);
@@ -185,6 +185,47 @@ fn test_failure_duplicate_operation() {
 
     // Emit event with same tx
     let event = Event::Withdrawal { client, tx, amount };
+
+    let result = analysis.process_event(&event);
+    assert_eq!(result, Err(AnalysisError::DuplicateOperation(tx)));
+
+    utils::assert_operations_count(&analysis, client, 1);
+    utils::assert_account_balance(&analysis, client, Amount(1.0), Amount(0.0));
+}
+
+#[test]
+fn test_failure_duplicate_operations_different_accounts() {
+    let mut analysis = Analysis::begin();
+
+    let client = Client(1);
+    let tx = Tx(1);
+    let amount = Amount(1.0);
+
+    let event = Event::Deposit { client, tx, amount };
+
+    let result = analysis.process_event(&event);
+    assert_eq!(result, Ok(()));
+
+    utils::assert_operations_count(&analysis, client, 1);
+    utils::assert_account_balance(&analysis, client, Amount(1.0), Amount(0.0));
+
+    let client = Client(2);
+    let tx = Tx(2);
+    let amount = Amount(1.0);
+
+    let event = Event::Deposit { client, tx, amount };
+
+    let result = analysis.process_event(&event);
+    assert_eq!(result, Ok(()));
+
+    utils::assert_operations_count(&analysis, client, 1);
+    utils::assert_account_balance(&analysis, client, Amount(1.0), Amount(0.0));
+
+    let client = Client(2);
+    let tx = Tx(1);
+    let amount = Amount(1.0);
+
+    let event = Event::Deposit { client, tx, amount };
 
     let result = analysis.process_event(&event);
     assert_eq!(result, Err(AnalysisError::DuplicateOperation(tx)));

@@ -23,7 +23,9 @@ use crate::event::Event;
 pub struct Analysis {
     accounts: HashMap<Client, Account>,
     disputes: HashMap<Tx, Client>,
+    // TODO: possibly change both these hashsets to bitmaps
     locked_accounts: HashSet<Client>,
+    used_txs: HashSet<Tx>,
 }
 
 impl Analysis {
@@ -59,6 +61,10 @@ impl Analysis {
             return Err(AnalysisError::AccountLocked(client));
         }
 
+        if self.used_txs.contains(&tx) {
+            return Err(AnalysisError::DuplicateOperation(tx));
+        }
+
         if amount.is_negative() {
             return Err(AnalysisError::NegativeAmountOperation(client, tx, amount));
         }
@@ -81,6 +87,7 @@ impl Analysis {
 
                 entry.insert(operation);
             }
+            // This branch shouldn't be reached
             Entry::Occupied(_) => return Err(AnalysisError::DuplicateOperation(tx)),
         }
 
@@ -92,6 +99,8 @@ impl Analysis {
             account.available_amount,
             amount
         );
+
+        self.used_txs.insert(tx);
 
         Ok(())
     }
@@ -106,6 +115,10 @@ impl Analysis {
 
         if self.locked_accounts.contains(&client) {
             return Err(AnalysisError::AccountLocked(client));
+        }
+
+        if self.used_txs.contains(&tx) {
+            return Err(AnalysisError::DuplicateOperation(tx));
         }
 
         if amount.is_negative() {
@@ -137,6 +150,7 @@ impl Analysis {
 
                 entry.insert(operation);
             }
+            // This branch shouldn't be reached
             Entry::Occupied(_) => return Err(AnalysisError::DuplicateOperation(tx)),
         }
 
@@ -148,6 +162,8 @@ impl Analysis {
             account.get().available_amount,
             -amount
         );
+
+        self.used_txs.insert(tx);
 
         Ok(())
     }
@@ -230,6 +246,7 @@ impl Analysis {
 
         let amount = match account.get().operations.get(&tx) {
             Some(operation) => operation.amount,
+            // This branch shoulbn't be reached
             None => return Err(AnalysisError::OperationNotFound(client, tx)),
         };
 

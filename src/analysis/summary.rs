@@ -24,7 +24,7 @@ impl Iterator for Summary {
                 client,
                 available,
                 held,
-                total: available + held,
+                total: (available + held).round(), // round amount after addition just in case
                 locked: self.locked.contains(&client),
             }
         })
