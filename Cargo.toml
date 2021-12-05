@@ -14,9 +14,11 @@ tracing = "0.1"
 tracing-appender = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
-# TODO: require this dependency by test feature
-structopt = "0.3"
-rand = "0.8"
+structopt = { version = "0.3", optional = true }
+rand = { version = "0.8", optional = true }
+
+[features]
+tools = ["structopt", "rand"]
 
 [dev-dependencies]
 assert_matches = "1"
@@ -29,6 +31,7 @@ path = "src/lib.rs"
 [[bin]]
 name = "generate_event_log"
 path = "bin/generate_event_log.rs"
+required-features = ["tools"]
 
 [[bin]]
 name = "csv_interface"
