@@ -15,8 +15,8 @@ pub(super) struct Account {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Summary {
     pub(super) client: Client,
-    pub(super) available: Amount,
-    pub(super) held: Amount,
-    pub(super) total: Amount,
+    pub(super) available: String,
+    pub(super) held: String,
+    pub(super) total: String,
     pub(super) locked: bool,
 }

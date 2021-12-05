@@ -42,7 +42,7 @@ impl TryFrom<RawEvent> for Event {
                 Ok(Self::Deposit {
                     client: raw.client,
                     tx: raw.tx,
-                    amount: amount.round(),
+                    amount,
                 })
             }
             EventType::Withdrawal => {
@@ -53,7 +53,7 @@ impl TryFrom<RawEvent> for Event {
                 Ok(Self::Withdrawal {
                     client: raw.client,
                     tx: raw.tx,
-                    amount: amount.round(),
+                    amount,
                 })
             }
         }

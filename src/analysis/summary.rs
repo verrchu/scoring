@@ -22,9 +22,9 @@ impl Iterator for Summary {
 
             account::Summary {
                 client,
-                available,
-                held,
-                total: (available + held).round(), // round amount after addition just in case
+                available: available.to_string(),
+                held: held.to_string(),
+                total: (available + held).to_string(),
                 locked: self.locked.contains(&client),
             }
         })
