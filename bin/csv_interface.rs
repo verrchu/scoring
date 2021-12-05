@@ -1,7 +1,4 @@
-mod event;
-use event::{Event, RawEvent};
-mod analysis;
-use analysis::Analysis;
+use scoring::{Analysis, Event, RawEvent};
 
 use std::{
     env,

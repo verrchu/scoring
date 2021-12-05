@@ -3,6 +3,7 @@ name = "scoring"
 authors = ["Evgeniy Terekhin <e_terekhin@pm.me>"]
 version = "0.1.0"
 edition = "2021"
+default-run = "csv_interface"
 
 [dependencies]
 csv = "1"
@@ -13,6 +14,22 @@ tracing = "0.1"
 tracing-appender = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
+# TODO: require this dependency by test feature
+structopt = "0.3"
+rand = "0.8"
+
 [dev-dependencies]
 assert_matches = "1"
 pretty_assertions = "1"
+
+[lib]
+name = "scoring"
+path = "src/lib.rs"
+
+[[bin]]
+name = "generate_event_log"
+path = "bin/generate_event_log.rs"
+
+[[bin]]
+name = "csv_interface"
+path = "bin/csv_interface.rs"
