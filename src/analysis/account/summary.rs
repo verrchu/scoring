@@ -35,7 +35,7 @@ use crate::event::wrappers::Client;
 ///     }]
 /// );
 /// ```
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Summary {
     /// Client ID
     pub client: Client,

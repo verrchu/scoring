@@ -140,3 +140,9 @@ expected() {
     expected="$(expected input_csv_amount_column_in_the_middle)"
     assert_output "$expected"; assert_not_equal "$expected" ""
 }
+
+@test "locked account" {
+    run -0 command locked_account
+    expected="$(expected locked_account)"
+    assert_output "$expected"; assert_not_equal "$expected" ""
+}

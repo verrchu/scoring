@@ -12,6 +12,7 @@ pub struct Amount(pub f64);
 
 impl fmt::Display for Amount {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Amount is displayed with fixed 4 decimal places
         write!(f, "{:.4}", self.0)
     }
 }
@@ -47,5 +48,62 @@ impl SubAssign for Amount {
 impl Amount {
     pub fn is_negative(&self) -> bool {
         self.0 < 0.0
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_add() {
+        let a = Amount(10.0);
+        let b = Amount(5.0);
+
+        assert_eq!(Amount(15.0), a + b);
+    }
+
+    #[test]
+    fn test_add_assign() {
+        let mut a = Amount(10.0);
+        let b = Amount(5.0);
+
+        a += b;
+
+        assert_eq!(Amount(15.0), a);
+    }
+
+    #[test]
+    fn test_sub_assign() {
+        let mut a = Amount(10.0);
+        let b = Amount(5.0);
+
+        a -= b;
+
+        assert_eq!(Amount(5.0), a);
+    }
+
+    #[test]
+    fn test_neg() {
+        let a = Amount(10.0);
+
+        assert_eq!(Amount(-10.0), -a);
+    }
+
+    #[test]
+    fn test_is_negative() {
+        assert_eq!(true, Amount(-1.0).is_negative());
+        assert_eq!(false, Amount(0.0).is_negative());
+        assert_eq!(false, Amount(1.0).is_negative());
+    }
+
+    #[test]
+    fn test_display() {
+        assert_eq!("0.0000".to_string(), Amount(0.0).to_string());
+        assert_eq!("0.9999".to_string(), Amount(0.9999).to_string());
+        assert_eq!("1.0000".to_string(), Amount(0.99999).to_string());
+        assert_eq!("0.1234".to_string(), Amount(0.1234).to_string());
+        assert_eq!("0.1235".to_string(), Amount(0.12345).to_string());
+        assert_eq!("1.0000".to_string(), Amount(1.000000001).to_string());
     }
 }

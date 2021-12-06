@@ -47,3 +47,127 @@ impl From<Analysis> for AnalysisSummary {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashSet;
+
+    use super::*;
+    use crate::{
+        event::wrappers::{Amount, Tx},
+        AccountSummary, Event,
+    };
+
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_basic() {
+        let mut analysis = Analysis::begin();
+
+        analysis
+            .process_event(&Event::Deposit {
+                client: Client(1),
+                tx: Tx(1),
+                amount: Amount(1.0),
+            })
+            .unwrap();
+        analysis
+            .process_event(&Event::Deposit {
+                client: Client(1),
+                tx: Tx(2),
+                amount: Amount(1.0),
+            })
+            .unwrap();
+        analysis
+            .process_event(&Event::Dispute {
+                client: Client(1),
+                tx: Tx(1),
+            })
+            .unwrap();
+
+        analysis
+            .process_event(&Event::Deposit {
+                client: Client(2),
+                tx: Tx(3),
+                amount: Amount(10.0),
+            })
+            .unwrap();
+        analysis
+            .process_event(&Event::Withdrawal {
+                client: Client(2),
+                tx: Tx(4),
+                amount: Amount(1.0),
+            })
+            .unwrap();
+        analysis
+            .process_event(&Event::Dispute {
+                client: Client(2),
+                tx: Tx(3),
+            })
+            .unwrap();
+        analysis
+            .process_event(&Event::Resolve {
+                client: Client(2),
+                tx: Tx(3),
+            })
+            .unwrap();
+
+        analysis
+            .process_event(&Event::Deposit {
+                client: Client(3),
+                tx: Tx(5),
+                amount: Amount(10.0),
+            })
+            .unwrap();
+        analysis
+            .process_event(&Event::Deposit {
+                client: Client(3),
+                tx: Tx(6),
+                amount: Amount(1.0),
+            })
+            .unwrap();
+        analysis
+            .process_event(&Event::Dispute {
+                client: Client(3),
+                tx: Tx(5),
+            })
+            .unwrap();
+        analysis
+            .process_event(&Event::Chargeback {
+                client: Client(3),
+                tx: Tx(5),
+            })
+            .unwrap();
+
+        let summary = analysis.summary().collect::<HashSet<AccountSummary>>();
+
+        assert_eq!(
+            summary,
+            [
+                AccountSummary {
+                    client: Client(1),
+                    available: String::from("1.0000"),
+                    held: String::from("1.0000"),
+                    total: String::from("2.0000"),
+                    locked: false
+                },
+                AccountSummary {
+                    client: Client(2),
+                    available: String::from("9.0000"),
+                    held: String::from("0.0000"),
+                    total: String::from("9.0000"),
+                    locked: false
+                },
+                AccountSummary {
+                    client: Client(3),
+                    available: String::from("1.0000"),
+                    held: String::from("0.0000"),
+                    total: String::from("1.0000"),
+                    locked: true
+                },
+            ]
+            .into_iter()
+            .collect::<HashSet<AccountSummary>>()
+        )
+    }
+}

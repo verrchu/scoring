@@ -6,13 +6,13 @@ docs:
 	@ cargo doc --open
 
 submodules:
-	@ git submodule update --init --recursive
+	@ git submodule update --init --recursive >/dev/null
 
 release:
 	@ cargo build --release
 
 release_tools:
-	@ cargo build --features tools --release
+	@ cargo build --features tools --release --bins
 
 bats: release submodules
 	@ ./test/bats/bin/bats test/test.bats
