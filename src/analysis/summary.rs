@@ -1,26 +1,32 @@
 use std::{collections::HashSet, iter::Iterator};
 
 use super::{
-    account::{self, Account},
+    account::{Account, AccountSummary},
     Analysis,
 };
 use crate::event::wrappers::Client;
 
 #[derive(Debug)]
-pub struct Summary {
+/// Represents [Analysis] symmary and can be conveniently obtained
+/// from an [Analysis] instance by calling [Analysis::summary]
+///
+/// Implements [Iterator] of [AccountSummary] for natural sequential processing
+pub struct AnalysisSummary {
+    #[doc(hidden)]
     accounts: Vec<(Client, Account)>,
+    #[doc(hidden)]
     locked: HashSet<Client>,
 }
 
-impl Iterator for Summary {
-    type Item = account::Summary;
+impl Iterator for AnalysisSummary {
+    type Item = AccountSummary;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.accounts.pop().map(|(client, account)| {
             let held = account.held_amount;
             let available = account.available_amount;
 
-            account::Summary {
+            AccountSummary {
                 client,
                 available: available.to_string(),
                 held: held.to_string(),
@@ -31,7 +37,7 @@ impl Iterator for Summary {
     }
 }
 
-impl From<Analysis> for Summary {
+impl From<Analysis> for AnalysisSummary {
     fn from(analysis: Analysis) -> Self {
         let accounts = analysis.accounts.into_iter().collect();
 

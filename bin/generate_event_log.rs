@@ -46,7 +46,7 @@ fn main() {
 
     let mut csv_writer = csv::Writer::from_path(args.file).unwrap();
 
-    for tx in (1..args.events).map(Tx) {
+    for tx in (2..args.events).map(Tx) {
         let event_type = choices[wi.sample(&mut rng)];
         let account = Client(rng.gen_range(1..=args.accounts));
         let event = generate_event(&mut rng, event_type, account, tx);

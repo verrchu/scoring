@@ -2,6 +2,9 @@ BATS_CASES := ./test/cases
 BATS_CASE_INPUT_HEADER := "type,client,tx,amount"
 BATS_CASE_OUTPUT_HEADER := "client,available,held,total,locked"
 
+docs:
+	@ cargo doc --open
+
 submodules:
 	@ git submodule update --init --recursive
 
@@ -23,33 +26,29 @@ endif
 	@ echo ${BATS_CASE_OUTPUT_HEADER} > ${BATS_CASES}/${NAME}/output.csv
 
 bench: release_tools
-	@ $(eval EVENT_LOG := $(shell mktemp -t event_log))
-	@ echo "Event log will be generated in ${EVENT_LOG}"
+	@ $(eval EVENT_LOG := $(shell mktemp))
+	@ printf "Event log will be generated in ${EVENT_LOG}\n"
 
-	@ echo "\n10 account; 1000 events"
-	@ echo "- Gnenerating test data"
-	@ cargo run --features tools --bin generate_event_log -- \
-		--accounts 10 --events 1000 --file ${EVENT_LOG} &>/dev/null
-	@ echo "- Running test"
+	@ printf "\n10 account; 1000 events\n"
+	@ printf " - Gnenerating test data\n"
+	@ ACCOUNTS=10 EVENTS=1000 EVENT_LOG=${EVENT_LOG} .scripts/generate_event_log.sh
+	@ printf " - Running test\n\n"
+	@ EVENT_LOG=${EVENT_LOG} time .scripts/run_capture_out.sh
 
-	@ time cargo run -- ${EVENT_LOG} &>/dev/null
-	@ echo "\n100 account; 10000 events"
-	@ echo "- Gnenerating test data"
-	@ cargo run --features tools --bin generate_event_log -- \
-		--accounts 100 --events 10000 --file ${EVENT_LOG} &>/dev/null
-	@ echo "- Running test"
-	@ time cargo run -- ${EVENT_LOG} &>/dev/null
+	@ printf "\n100 account; 10000 events\n"
+	@ printf " - Gnenerating test data\n"
+	@ ACCOUNTS=100 EVENTS=10000 EVENT_LOG=${EVENT_LOG} .scripts/generate_event_log.sh
+	@ printf " - Running test\n\n"
+	@ EVENT_LOG=${EVENT_LOG} time .scripts/run_capture_out.sh
 
-	@ echo "\n1000 account; 100000 events"
-	@ echo "- Gnenerating test data"
-	@ cargo run --features tools --bin generate_event_log -- \
-		--accounts 1000 --events 100000 --file ${EVENT_LOG} &>/dev/null
-	@ echo "- Running test"
-	@ time cargo run -- ${EVENT_LOG} &>/dev/null
+	@ printf "\n1000 account; 100000 events\n"
+	@ printf " - Gnenerating test data\n"
+	@ ACCOUNTS=1000 EVENTS=100000 EVENT_LOG=${EVENT_LOG} .scripts/generate_event_log.sh
+	@ printf " - Running test\n\n"
+	@ EVENT_LOG=${EVENT_LOG} time .scripts/run_capture_out.sh
 
-	@ echo "\n10000 account; 1000000 events"
-	@ echo "- Gnenerating test data"
-	@ cargo run --features tools --bin generate_event_log -- \
-		--accounts 10000 --events 1000000 --file ${EVENT_LOG} &>/dev/null
-	@ echo "- Running test"
-	@ time cargo run -- ${EVENT_LOG} &>/dev/null
+	@ printf "\n10000 account; 1000000 events\n"
+	@ printf " - Gnenerating test data\n"
+	@ ACCOUNTS=10000 EVENTS=1000000 EVENT_LOG=${EVENT_LOG} .scripts/generate_event_log.sh
+	@ printf " - Running test\n\n"
+	@ EVENT_LOG=${EVENT_LOG} time .scripts/run_capture_out.sh

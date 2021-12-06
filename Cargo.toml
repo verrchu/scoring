@@ -32,7 +32,9 @@ path = "src/lib.rs"
 name = "generate_event_log"
 path = "bin/generate_event_log.rs"
 required-features = ["tools"]
+test = false
 
 [[bin]]
 name = "csv_interface"
 path = "bin/csv_interface.rs"
+test = false

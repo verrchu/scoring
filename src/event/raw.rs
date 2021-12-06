@@ -5,9 +5,11 @@ use super::{
     Event, EventType,
 };
 
-// Unfortunately csv crate can not deserialize rows directly to internally
-// tagged enums (https://github.com/BurntSushi/rust-csv/issues/211).
-// Therefore intermadiate struct is used for bridging purpose.
+/// Utility struct which primary purpose is to be an
+/// intermediate representation during (de)serialization.
+///
+/// One of the cases is limitations of the [csv] library to deserialize
+/// internally tagged enums ([issue](https://github.com/BurntSushi/rust-csv/issues/211))
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct RawEvent {
     #[serde(rename = "type")]

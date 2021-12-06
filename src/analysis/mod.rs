@@ -2,16 +2,18 @@
 mod tests;
 
 mod account;
-use account::Account;
-mod operation;
-use operation::Operation;
+pub use account::AccountSummary;
+use account::{operation, Account, Operation};
 
+/// provides [AnalysisSummary]
 mod summary;
-pub use summary::Summary;
+pub use summary::AnalysisSummary;
 
+#[doc(hidden)]
 mod error;
 pub use error::Error as AnalysisError;
 
+/// Utility error type which binds [AnalysisError] to [std::result::Result]
 pub type AnalysisResult<T> = Result<T, AnalysisError>;
 
 use std::collections::{hash_map::Entry, HashMap, HashSet};
@@ -19,24 +21,45 @@ use std::collections::{hash_map::Entry, HashMap, HashSet};
 use crate::event::wrappers::{Amount, Client, Tx};
 use crate::event::Event;
 
+/// Reprsents internal state of analysis process.
+/// It's life cycle can be seen as follows:
+/// # Example
+/// ```
+/// use scoring::{Analysis, Event};
+///
+/// let mut analysis = Analysis::begin();
+///
+/// let events = Vec::<Event>::new();
+/// for event in events.iter() {
+///     analysis.process_event(&event);
+/// }
+///
+/// let symmary = analysis.summary();
+/// ```
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Analysis {
+    #[doc(hidden)]
     accounts: HashMap<Client, Account>,
+    #[doc(hidden)]
     disputes: HashMap<Tx, Client>,
-    // TODO: possibly change both these hashsets to bitmaps
+    #[doc(hidden)]
     locked_accounts: HashSet<Client>,
+    #[doc(hidden)]
     used_txs: HashSet<Tx>,
 }
 
 impl Analysis {
+    /// Initializes analysis
     pub fn begin() -> Self {
         Analysis::default()
     }
 
-    pub fn summary(self) -> Summary {
-        Summary::from(self)
+    /// Turns [Analysis] into [AnalysisSummary]
+    pub fn summary(self) -> AnalysisSummary {
+        AnalysisSummary::from(self)
     }
 
+    /// Processes single [event][Event]. Processing modifies [analysis][Analysis] internal state.
     pub fn process_event(&mut self, event: &Event) -> AnalysisResult<()> {
         match event {
             Event::Deposit { client, tx, amount } => self.process_deposit(*client, *tx, *amount),
@@ -49,6 +72,7 @@ impl Analysis {
         }
     }
 
+    #[doc(hidden)]
     fn process_deposit(&mut self, client: Client, tx: Tx, amount: Amount) -> AnalysisResult<()> {
         tracing::trace!(
             "attempting deposit: (client: {}, tx: {}, amount: {})",
@@ -105,6 +129,7 @@ impl Analysis {
         Ok(())
     }
 
+    #[doc(hidden)]
     fn process_withdrawal(&mut self, client: Client, tx: Tx, amount: Amount) -> AnalysisResult<()> {
         tracing::trace!(
             "attempting withdrawal: (client: {}, tx: {}, amount: {})",
@@ -168,6 +193,7 @@ impl Analysis {
         Ok(())
     }
 
+    #[doc(hidden)]
     fn process_dispute_init(&mut self, client: Client, tx: Tx) -> AnalysisResult<()> {
         tracing::trace!("attempting dispute init: (client: {}, tx: {})", client, tx);
 
@@ -219,6 +245,7 @@ impl Analysis {
         Ok(())
     }
 
+    #[doc(hidden)]
     fn process_dispute_resolve(&mut self, client: Client, tx: Tx) -> AnalysisResult<()> {
         tracing::trace!(
             "attempting dispute resolve: (client: {}, tx: {})",
@@ -275,6 +302,7 @@ impl Analysis {
         Ok(())
     }
 
+    #[doc(hidden)]
     fn process_dispute_chargeback(&mut self, client: Client, tx: Tx) -> AnalysisResult<()> {
         tracing::trace!(
             "attempting dispute chargeback: (client: {}, tx: {})",

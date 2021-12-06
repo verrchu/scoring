@@ -5,6 +5,8 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
+/// Amount. Several mathematical operations are implemented for this
+/// wrapper type for convenience.
 #[derive(Debug, Clone, Copy, Default, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct Amount(pub f64);
 
