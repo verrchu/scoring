@@ -6,6 +6,22 @@ which is the name of the input CSV file and outputs the result to stdout. \
 The intended way of using the program is like this: \
 ```cargo run -- input.csv > output.csv```
 
+## Technical notes
+* The project is broken down into core library (which is in **src**) and two binaries (both in **bin**).\
+The **csv_interface** binary is the one which processes csv input and output \
+and uses the core lib internally. The **generate_event_log** binary is used in benchmarks.
+* Transactions with negative amount are ignored
+* Zero amount transactions are allowed (I can provide cases when it is useful)
+* Disputes on withdrawals are ignored
+* Amounts are output with fixed 4 decimal places. \
+This decision wasn't an easy one to make but made the most sense in the end. \
+Basic rounding rules apply to amounts (0.00001 -> 0.0000, 0.99999 -> 1.0000)
+
+## Docs
+The project is somewhat covered with **rustdoc**. \
+Just run ```make docs``` in the root of the project to browse the docs. \
+There are other comments in the code too.
+
 ## Unit tests
 Just run ```cargo test``` in the root of the project
 

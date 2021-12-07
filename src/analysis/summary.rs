@@ -39,6 +39,7 @@ impl Iterator for AnalysisSummary {
 
 impl From<Analysis> for AnalysisSummary {
     fn from(analysis: Analysis) -> Self {
+        // transform HashMap to Vec for ease of iteration
         let accounts = analysis.accounts.into_iter().collect();
 
         Self {

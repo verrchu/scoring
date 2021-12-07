@@ -39,12 +39,16 @@ use crate::event::Event;
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Analysis {
     #[doc(hidden)]
+    // Tracks client accounts' states
     accounts: HashMap<Client, Account>,
     #[doc(hidden)]
+    // Tracks active disputes
     disputes: HashMap<Tx, Client>,
     #[doc(hidden)]
+    // Tracks locked accounts
     locked_accounts: HashSet<Client>,
     #[doc(hidden)]
+    // Tracks used txs (transaction IDs). txs should be unique
     used_txs: HashSet<Tx>,
 }
 
